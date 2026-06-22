@@ -1,0 +1,10 @@
+{
+  "name": "shutterpixs-root",
+  "version": "1.0.0",
+  "description": "Root package runner for ShutterPixs Portfolio & Booking System",
+  "scripts": {
+    "dev": "npm run dev --prefix backend",
+    "start": "npm start --prefix backend",
+    "install-all": "npm install --prefix backend"
+  }
+}
