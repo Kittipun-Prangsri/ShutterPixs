@@ -396,15 +396,298 @@ app.post('/api/webhook/line',
       return res.sendStatus(200);
     }
 
-  try {
-    const events = req.body.events;
-    const results = await Promise.all(events.map(handleLineEvent));
-    res.json(results);
-  } catch (err) {
-    console.error('Line webhook error:', err);
-    res.status(500).end();
+    try {
+      const events = req.body.events;
+      const results = await Promise.all(events.map(handleLineEvent));
+      res.json(results);
+    } catch (err) {
+      console.error('Line webhook error:', err);
+      res.status(500).end();
+    }
+  });
+
+// Helper: Get keyword-based responses for common inquiries
+// Helper: Get keyword-based responses for common inquiries
+function getKeywordResponse(text) {
+  if (!text) return null;
+  // Normalize: remove spaces/hyphens, normalize double-เ to แ, convert to lowercase
+  const cleanText = text.replace(/[\s\-\–]+/g, '').replace(/\u0e40\u0e40/g, '\u0e41').toLowerCase();
+
+  // 1. ช่างภารับอะไรบ้าง / ช่างภาทำอะไร / ช่างภารับงานอะไร
+  if (cleanText.includes('ช่างภาพ') && (cleanText.includes('รับ') || cleanText.includes('ทำ') || cleanText.includes('บริการ') || cleanText.includes('งาน'))) {
+    return `📸 ช่างภาพ ของทาง ShutterPixs ยินดีให้บริการถ่ายภาพระดับพรีเมียมในประเภทงานต่างๆ ดังนี้ครับ:\n` +
+      `1. งานแต่งงาน (Wedding) - พิธีเช้า งานเลี้ยงเย็น หรือพรีเวดดิ้ง\n` +
+      `2. งานบวช (Ordination) - พิธีปลงผม แห่นาค และพิธีในโบสถ์\n` +
+      `3. งานรับปริญญา (Graduation) - ทั้งวันจริงและนอกรอบแบบเดี่ยว/กลุ่ม\n` +
+      `4. งาน Portrait / อื่นๆ (Other) - ภาพโปรไฟล์ อีเวนต์ สินค้า และแฟชั่นครับ\n\n` +
+      `คุณลูกค้าสามารถดูตัวอย่างผลงานช่างภาและจองคิวออนไลน์ได้ทางเว็บหลัก https://shutterpixs59.web.app นะครับ 😊`;
   }
-});
+
+  // 2. เช้า-เที่ยง ราคาเท่าไร / ราคาเช้าเที่ยง
+  if (cleanText.includes('เช้าเที่ยง') && (cleanText.includes('ราคา') || cleanText.includes('เท่าไร') || cleanText.includes('เท่าไหร่') || cleanText.includes('กี่บาท'))) {
+    return `📸 สำหรับคิวงานช่วง เช้า-เที่ยง (ครึ่งวัน / ประมาณ 4 ชั่วโมง):\n` +
+      `- ราคาเริ่มต้น 4,900 บาท (Bronze Package)\n` +
+      `- บริการโดยช่างภาพหลัก 1 คน พร้อมปรับแต่งโทนสีไฟล์ภาพดิจิทัลทั้งหมด และส่งงานภายใน 7-10 วันครับ\n\n` +
+      `สามารถเช็คคิวช่างภาว่างและจองคิวออนไลน์ล่วงหน้าได้ที่ https://shutterpixs59.web.app ครับ ✨`;
+  }
+
+  // 3. เช้า-เย็น ราคาเท่าไร / ราคาเช้าเย็น
+  if (cleanText.includes('เช้าเย็น') && (cleanText.includes('ราคา') || cleanText.includes('เท่าไร') || cleanText.includes('เท่าไหร่') || cleanText.includes('กี่บาท'))) {
+    return `📸 สำหรับคิวงานช่วง เช้า-เย็น (เต็มวัน / ประมาณ 8 ชั่วโมง):\n` +
+      `- ราคาเริ่มต้น 14,900 บาท (Gold Package)\n` +
+      `- บริการโดยทีมช่างภาพ 3 คน (หลัก+แคนดิด) พร้อมไฟสตูดิโอขนาดใหญ่หน้างาน โฟโต้บุ๊คพรีเมียม ส่งงานด่วน 3 วันครับ\n\n` +
+      `สามารถจองคิวออนไลน์หรือเลือกแพ็กเกจอื่นๆ เพิ่มเติมได้ทางเว็บหลัก https://shutterpixs59.web.app ครับ ✨`;
+  }
+
+  return null;
+}
+
+// Helper: Generate service Flex Message
+function getServiceFlexMessage(category) {
+  const websiteBase = 'https://shutterpixs59.web.app';
+  
+  const services = {
+    wedding: {
+      title: "Pre-Wedding / งานแต่ง",
+      typeText: "ถ่ายภาพพรีเวดดิ้ง / งานแต่ง",
+      priceText: "฿8,900 / คิว",
+      descText: "บันทึกความทรงจำ สีละมุน ส่งงานไว ✨",
+      imageUrl: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+      color: "#C2185B",
+      portfolioUrl: `${websiteBase}/#portfolio`,
+      bookingUrl: `${websiteBase}/#planner`
+    },
+    ordination: {
+      title: "Ordination / งานบวช",
+      typeText: "ถ่ายภาพงานบวช / อุปสมบท",
+      priceText: "฿4,900 / คิว",
+      descText: "งานบวชแสนประณีต ครบทุกพิธีสำคัญ 🙏",
+      imageUrl: "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+      color: "#E67E22",
+      portfolioUrl: `${websiteBase}/#portfolio`,
+      bookingUrl: `${websiteBase}/#planner`
+    },
+    graduation: {
+      title: "Graduation / รับปริญญา",
+      typeText: "ถ่ายภาพนอกรอบ / วันจริง",
+      priceText: "฿3,500 / คิว",
+      descText: "ภาพรับปริญญา ช็อตเดี่ยว/กลุ่ม สุดปัง 🎓",
+      imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+      color: "#2980B9",
+      portfolioUrl: `${websiteBase}/#portfolio`,
+      bookingUrl: `${websiteBase}/#planner`
+    },
+    event: {
+      title: "Event / งานอีเว้นท์",
+      typeText: "ถ่ายภาพอีเว้นท์ / กิจกรรม",
+      priceText: "฿5,000 / คิว",
+      descText: "งานสัมมนา ปาร์ตี้ คอนเสิร์ต ครบทุกโมเมนต์ 🎉",
+      imageUrl: "https://images.unsplash.com/photo-1511578314322-379afb476865?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+      color: "#8E44AD",
+      portfolioUrl: `${websiteBase}/#portfolio`,
+      bookingUrl: `${websiteBase}/#planner`
+    },
+    other: {
+      title: "Portrait / ถ่ายภาพอื่นๆ",
+      typeText: "ถ่ายภาพบุคคล / สินค้า / แฟชั่น",
+      priceText: "฿3,900 / คิว",
+      descText: "ถ่ายภาพโปรไฟล์ แฟชั่น หรือรูปส่วนตัวสุดชิค 📸",
+      imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+      color: "#16A085",
+      portfolioUrl: `${websiteBase}/#portfolio`,
+      bookingUrl: `${websiteBase}/#planner`
+    }
+  };
+
+  const createBubble = (svc) => ({
+    type: "bubble",
+    hero: {
+      type: "image",
+      url: svc.imageUrl,
+      size: "full",
+      aspectRatio: "20:13",
+      aspectMode: "cover",
+      action: {
+        type: "uri",
+        uri: svc.portfolioUrl
+      }
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: svc.title,
+          weight: "bold",
+          size: "xl",
+          color: svc.color
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          margin: "md",
+          spacing: "sm",
+          contents: [
+            {
+              type: "box",
+              layout: "baseline",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: "ประเภท",
+                  color: "#aaaaaa",
+                  size: "sm",
+                  flex: 2
+                },
+                {
+                  type: "text",
+                  text: svc.typeText,
+                  wrap: true,
+                  color: "#666666",
+                  size: "sm",
+                  flex: 5
+                }
+              ]
+            },
+            {
+              type: "box",
+              layout: "baseline",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: "ราคาเริ่ม",
+                  color: "#aaaaaa",
+                  size: "sm",
+                  flex: 2
+                },
+                {
+                  type: "text",
+                  text: svc.priceText,
+                  wrap: true,
+                  color: svc.color,
+                  size: "sm",
+                  flex: 5,
+                  weight: "bold"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: "text",
+          text: svc.descText,
+          wrap: true,
+          color: "#888888",
+          size: "xs",
+          margin: "md"
+        }
+      ]
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "ดูผลงาน (Portfolio)",
+            uri: svc.portfolioUrl
+          },
+          color: svc.color
+        },
+        {
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "เช็คคิวว่าง / จองคิว",
+            uri: svc.bookingUrl
+          }
+        }
+      ],
+      flex: 0
+    }
+  });
+
+  if (category === 'all') {
+    return {
+      type: "flex",
+      altText: "สอบถามราคาและแพ็กเกจ ShutterPixs 📸",
+      contents: {
+        type: "carousel",
+        contents: Object.keys(services).map(key => createBubble(services[key]))
+      }
+    };
+  }
+
+  if (services[category]) {
+    return {
+      type: "flex",
+      altText: `รายละเอียดแพ็กเกจ ${services[category].title} 📸`,
+      contents: createBubble(services[category])
+    };
+  }
+
+  return null;
+}
+
+// Helper: Map text to Flex Message response
+function getFlexMessageForText(text) {
+  if (!text) return null;
+  // Normalize: remove spaces/hyphens, normalize double-เ to แ, convert to lowercase
+  const cleanText = text.replace(/[\s\-\–]+/g, '').replace(/\u0e40\u0e40/g, '\u0e41').toLowerCase();
+
+  // 1. งานแต่ง
+  if (cleanText.includes('แต่งงาน') || cleanText.includes('wedding') || cleanText.includes('งานแต่ง') || cleanText.includes('พรีเวด')) {
+    return getServiceFlexMessage('wedding');
+  }
+
+  // 2. งานบวช
+  if (cleanText.includes('งานบวช') || cleanText.includes('บวช') || cleanText.includes('อุปสมบท') || cleanText.includes('ordination')) {
+    return getServiceFlexMessage('ordination');
+  }
+
+  // 3. งานรับปริญญา
+  if (cleanText.includes('รับปริญญา') || cleanText.includes('เรียนจบ') || cleanText.includes('graduation') || cleanText.includes('นอกรอบ')) {
+    return getServiceFlexMessage('graduation');
+  }
+
+  // 4. งานอีเว้น
+  if (cleanText.includes('อีเว้น') || cleanText.includes('อีเวน') || cleanText.includes('สัมมนา') || cleanText.includes('event') || cleanText.includes('ปาร์ตี้')) {
+    return getServiceFlexMessage('event');
+  }
+
+  // 5. ถ่ายภาพอื่นๆ / อื่นๆ
+  if (cleanText.includes('ถ่ายภาพอื่นๆ') || cleanText.includes('อื่นๆ') || cleanText.includes('portrait') || cleanText.includes('พอร์ตเทรต') || cleanText.includes('บุคคล') || cleanText.includes('โปรไฟล์')) {
+    return getServiceFlexMessage('other');
+  }
+
+  // 6. สอบถาม / ราคา / แพ็กเกจ / กี่บาท / อัตราค่าบริการ
+  if (cleanText === 'สอบถาม' || 
+      cleanText.includes('สอบถาม') ||
+      cleanText.includes('ราคา') || 
+      cleanText.includes('ราขา') || 
+      cleanText.includes('เท่าไร') ||
+      cleanText.includes('เท่าไหร่') ||
+      cleanText.includes('กี่บาท') ||
+      cleanText.includes('แพ็กเกจ') || 
+      cleanText.includes('แพคเกจ') || 
+      cleanText.includes('เเพ็คเกจ') ||
+      cleanText.includes('เเพคเกจ') ||
+      cleanText.includes('อัตรา')) {
+    return getServiceFlexMessage('all');
+  }
+
+  return null;
+}
 
 // Event Handler for LINE Messages
 async function handleLineEvent(event) {
@@ -567,6 +850,27 @@ async function handleLineEvent(event) {
         }]
       });
     }
+  }
+
+  // Check for specific keywords (สอบถาม, ราคา, เช้า-เที่ยง, เช้า-เย็น, ช่างภา)
+  const keywordReplyText = getKeywordResponse(userText);
+  if (keywordReplyText) {
+    return lineClient.replyMessage({
+      replyToken: replyToken,
+      messages: [{
+        type: 'text',
+        text: keywordReplyText
+      }]
+    });
+  }
+
+  // Check for category Flex Messages (สอบถาม, งานแต่ง, งานบวช, งานรับปริญญา, งานอีเว้น, ถ่ายภาพอื่นๆ)
+  const flexMessage = getFlexMessageForText(userText);
+  if (flexMessage) {
+    return lineClient.replyMessage({
+      replyToken: replyToken,
+      messages: [flexMessage]
+    });
   }
 
   // Default welcome response (handled by Gemini AI)
