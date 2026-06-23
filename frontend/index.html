@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShutterPixs - บริการถ่ายภาพงานแต่ง งานบวช งานรับปริญญา ระดับพรีเมียม</title>
+    
+    <meta name="color-scheme" content="light dark">
+    <script>
+        {
+            const savedTheme = localStorage.getItem("shutterpixs_theme");
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+    </script>
+    
     <meta name="description" content="บันทึกภาพความทรงจำที่สวยงามที่สุดในชีวิตคุณด้วยบริการถ่ายภาพระดับมืออาชีพจาก ShutterPixs จองคิวสะดวกรวดเร็วผ่านระบบ Line OA">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📸</text></svg>">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,6 +52,9 @@
             </nav>
 
             <div class="nav-actions">
+                <button id="btn-theme-toggle" class="btn-admin-nav" title="สลับโหมดมืด/สว่าง">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
                 <a href="/admin.html" class="btn-admin-nav" title="เข้าสู่ระบบแอดมินหลังบ้าน"><i class="fa-solid fa-user-gear"></i></a>
                 <a href="#planner" class="btn btn-primary btn-glow">จองคิวเลย</a>
                 <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle menu">

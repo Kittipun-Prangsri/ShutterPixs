@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     // Navigation Nodes
     const navbar = document.querySelector('.navbar');
     const mobileToggle = document.getElementById('mobile-toggle');
@@ -39,6 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Footer Links Filter
     const footerFilterLinks = document.querySelectorAll('.filter-link');
 
+    // Theme Switcher Toggle Click Event
+    const themeToggleBtn = document.getElementById('btn-theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('shutterpixs_theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+    }
+
     // -------------------------------------------------------------
     // 1. Mobile Menu Toggle
     // -------------------------------------------------------------
@@ -71,10 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', () => {
         if (window.scrollY > 50) {
             navbar.style.padding = '0.5rem 0';
-            navbar.style.background = 'rgba(7, 10, 19, 0.92)';
+            navbar.classList.add('scrolled');
         } else {
             navbar.style.padding = '0';
-            navbar.style.background = 'rgba(7, 10, 19, 0.75)';
+            navbar.classList.remove('scrolled');
         }
     });
 
@@ -499,6 +513,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('ไม่สามารถคัดลอกได้อัตโนมัติ กรุณาจดเลขจองคิวไว้เพื่อแจ้งแอดมิน');
             });
         });
+    }
+
+    // -------------------------------------------------------------
+    // 5. Theme Switcher Utilities (โหมดมืด/สว่าง)
+    // -------------------------------------------------------------
+    function initTheme() {
+        const savedTheme = localStorage.getItem('shutterpixs_theme');
+        
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        } else {
+            // ค่าเริ่มต้นตามการตั้งค่าของระบบปฏิบัติการ (OS Theme preference)
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const currentTheme = systemPrefersDark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            updateThemeIcon(currentTheme);
+        }
+
+        // ตรวจจับการเปลี่ยนแปลงธีมของระบบในแบบเรียลไทม์
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('shutterpixs_theme')) {
+                const newTheme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                updateThemeIcon(newTheme);
+            }
+        });
+    }
+
+    function updateThemeIcon(theme) {
+        const toggleBtn = document.getElementById('btn-theme-toggle');
+        if (!toggleBtn) return;
+        const icon = toggleBtn.querySelector('i');
+        if (!icon) return;
+        
+        if (theme === 'dark') {
+            icon.className = 'fa-solid fa-sun';
+            toggleBtn.title = 'สลับโหมดเป็นสว่าง (Switch to Light Mode)';
+        } else {
+            icon.className = 'fa-solid fa-moon';
+            toggleBtn.title = 'สลับโหมดเป็นมืด (Switch to Dark Mode)';
+        }
     }
 
     // -------------------------------------------------------------

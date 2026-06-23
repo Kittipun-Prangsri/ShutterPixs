@@ -19,22 +19,22 @@ module.exports = {
   },
 
   /**
-   * อัปเดตสถานะคิวการจอง (Admin Only)
+   * อัปเดตข้อมูลการจองคิว (Admin Only)
    * PUT /api/admin/bookings/:id
    */
-  updateBookingStatus: async (req, res) => {
+  updateBooking: async (req, res) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const updateData = req.body;
 
-      if (!status) {
+      if (!updateData || Object.keys(updateData).length === 0) {
         return res.status(400).json({
           error: 'Bad Request',
-          message: 'จำเป็นต้องส่งค่าสถานะ (status) ใน request body'
+          message: 'จำเป็นต้องส่งข้อมูลที่ต้องการแก้ไขใน request body'
         });
       }
 
-      const result = await bookingService.updateBookingStatus(id, status);
+      const result = await bookingService.updateBooking(id, updateData);
       return res.status(200).json(result);
     } catch (error) {
       const status = error.message.includes('ไม่พบ') ? 404 : 500;

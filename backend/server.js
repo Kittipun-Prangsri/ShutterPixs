@@ -41,8 +41,9 @@ if (serviceAccountPath && serviceAccountPath.trim() !== '') {
   console.log('⚠️  Using In-Memory Fallback Database. Configure GOOGLE_APPLICATION_CREDENTIALS in .env to connect to your live database.');
 }
 
-// In-Memory Fallback Database
-const mockBookings = [];
+// In-Memory Fallback Database (Shared with bookingService)
+const bookingService = require('./services/bookingService');
+const mockBookings = bookingService.getMockBookings();
 const mockPortfolios = [
   {
     id: "p1",

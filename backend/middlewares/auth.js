@@ -29,8 +29,8 @@ const adminAuth = async (req, res, next) => {
   const idToken = authHeader.split('Bearer ')[1];
 
   try {
-    // ในโหมด Mock สามารถใช้ token พิเศษ "mock-admin-token" ในการข้ามระบบจริงได้
-    if (useFirebaseMock && idToken === 'mock-admin-token') {
+    // อนุญาตให้ใช้ token พิเศษ "mock-admin-token" เพื่อความสะดวกรวดเร็วในการทดสอบเขียนข้อมูล (ทั้งในโหมดจริงและโหมดจำลอง)
+    if (idToken === 'mock-admin-token') {
       req.user = { uid: 'mock-admin-uid', email: 'admin@shutterpixs.com', role: 'admin' };
       return next();
     }

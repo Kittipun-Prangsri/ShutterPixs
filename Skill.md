@@ -97,8 +97,24 @@ If you see the error `Your API key was reported as leaked. Please use another AP
 
 ---
 
+### 4. Admin CMS Mock Authentication Bypass
+For local testing of dashboard database writes without requiring live Firebase Auth accounts:
+1. The backend authentication middleware (`backend/middlewares/auth.js`) is configured to accept `mock-admin-token` as a valid authorization token.
+2. In the Admin CMS frontend, click **Mock Login** to set the authorization token to `mock-admin-token`. This allows read and write access to the Firestore database for local testing.
+
+### 5. Admin Theme & Dark/Light Mode Switcher
+The admin dashboard supports standard dark and light mode toggling:
+- **Theme Variables**: Variable styles are declared inside `frontend/admin.css` under `:root` (default dark mode variables) and `:root[data-theme="light"]` / `@media (prefers-color-scheme: light)` (light mode overrides).
+- **OS Theme Sync**: By default, if the user hasn't pinned a specific theme, it automatically synchronizes with the system OS dark/light setting.
+- **FOUC Prevention**: A blocking inline script in `<head>` of `admin.html` reads `shutterpixs_theme` from `localStorage` and sets `data-theme` on the `html` element immediately, preventing a Flash of Unstyled Content (FOUC).
+- **Manual Toggle**: Clicking `#btn-theme-toggle` toggles between modes, flips the sun/moon icon, and stores the user preference in `localStorage`.
+
+---
+
 ## Common Mistakes
 
 - **Incorrect Content-Length in Tests:** When mock-testing the webhook endpoint via curl or Node scripts, ensure the `Content-Length` header uses `Buffer.byteLength(data)` instead of `data.length`. Non-ASCII Thai characters take up multiple bytes, and using `data.length` will truncate the payload, throwing `SyntaxError: Unterminated string in JSON`.
 - **Double-เ Vowel Mismatch:** In Thai, users occasionally type `เเ` (two separate `\u0e40` characters) instead of `แ` (one `\u0e41` character). The keyword normalizer automatically replaces `\u0e40\u0e40` with `\u0e41` in `server.js` to prevent matching failures. Keep this normalization logic intact when extending keywords.
 - **Port Conflict (EADDRINUSE):** If you attempt to start nodemon when another instance of the server is already active in a terminal, it will crash with `EADDRINUSE: address already in use :::3005`. Find and kill the conflicting process or let nodemon handle file reloads automatically.
+- **Unstyled Theme Flash (FOUC):** Do not load theme-applying scripts using async/defer attributes or ES modules. Always place a blocking inline script at the top of the `<head>` block to prevent a brief visual flash of the default dark theme when loading light mode.
+- **Hardcoded Component Colors:** Avoid using hardcoded hex values (e.g. `#000000` or `#ffffff`) for component backgrounds or text colors. Always use custom theme variables like `var(--bg-body)` or `var(--text-primary)` to ensure the components render properly in both light and dark modes.

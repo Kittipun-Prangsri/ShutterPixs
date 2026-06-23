@@ -61,12 +61,14 @@ module.exports = {
   },
 
   /**
-   * อัปเดตสถานะการจองคิว (เช่น Confirmed, Completed, Cancelled)
+   * อัปเดตข้อมูลการจองคิวทั้งหมดหรือบางฟิลด์
    */
-  updateBookingStatus: async (id, status) => {
-    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      throw new Error('สถานะการจองไม่ถูกต้อง');
+  updateBooking: async (id, updateData) => {
+    if (updateData.status) {
+      const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+      if (!validStatuses.includes(updateData.status)) {
+        throw new Error('สถานะการจองไม่ถูกต้อง');
+      }
     }
 
     if (useFirebaseMock || !db) {
@@ -74,7 +76,7 @@ module.exports = {
       if (!booking) {
         throw new Error('ไม่พบข้อมูลการจองคิวที่ระบุ');
       }
-      booking.status = status;
+      Object.assign(booking, updateData);
       booking.updated_at = new Date().toISOString();
       return booking;
     }
@@ -87,21 +89,24 @@ module.exports = {
         // หากไม่มีใน Firestore ให้ลองหาและอัปเดตใน mockBookings
         const booking = mockBookings.find(b => b.id === id);
         if (booking) {
-          booking.status = status;
+          Object.assign(booking, updateData);
           return booking;
         }
         throw new Error('ไม่พบข้อมูลการจองคิวที่ระบุ');
       }
 
-      const updateData = {
-        status,
+      const cleanUpdateData = {
+        ...updateData,
         updated_at: new Date().toISOString()
       };
 
-      await docRef.update(updateData);
-      return { id, ...doc.data(), ...updateData };
+      // ลบฟิลด์ id หากติดมา เพื่อป้องกันความผิดพลาดใน Firestore
+      delete cleanUpdateData.id;
+
+      await docRef.update(cleanUpdateData);
+      return { id, ...doc.data(), ...cleanUpdateData };
     } catch (error) {
-      throw new Error(`ไม่สามารถอัปเดตสถานะการจองคิวได้: ${error.message}`);
+      throw new Error(`ไม่สามารถอัปเดตข้อมูลการจองคิวได้: ${error.message}`);
     }
   },
 

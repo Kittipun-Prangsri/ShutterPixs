@@ -39,6 +39,7 @@ const fallbackPortfolios = [
 
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     initApp();
     setupEventListeners();
 });
@@ -153,6 +154,19 @@ function switchTab(tabId) {
 // ตั้งค่า Event Listeners ทั้งหมด
 // -------------------------------------------------------------
 function setupEventListeners() {
+    // โหมดธีม มืด/สว่าง
+    const themeToggleBtn = document.getElementById('btn-theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('shutterpixs_theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+    }
+
     // ฟอร์มเข้าสู่ระบบ
     document.getElementById('login-form').addEventListener('submit', handleFirebaseLogin);
     document.getElementById('btn-mock-login').addEventListener('click', handleMockLogin);
@@ -188,6 +202,7 @@ function setupEventListeners() {
     });
 
     document.getElementById('package-form').addEventListener('submit', savePackageData);
+    document.getElementById('booking-form').addEventListener('submit', saveBookingData);
 
     // การลากและวางอัปเดตรูปภาพ (Drag & Drop Zone)
     const dropzone = document.getElementById('upload-dropzone');
@@ -507,6 +522,9 @@ function renderBookingsTable(list) {
         }
         
         actionButtons += `
+            <button onclick="editBookingData('${b.id}')" class="btn-action btn-action-blue" title="แก้ไขข้อมูลการจองคิว">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
             <button onclick="deleteBookingData('${b.id}')" class="btn-action btn-action-red" title="ลบข้อมูลการจองคิวนี้">
                 <i class="fa-solid fa-trash-can"></i>
             </button>
@@ -616,6 +634,99 @@ async function deleteBookingData(id) {
     } catch (error) {
         allBookingsList = allBookingsList.filter(b => b.id !== id);
         showToast('ลบรายการจองเรียบร้อยแล้ว (โหมดจำลองออฟไลน์)');
+        loadBookings();
+    }
+}
+
+function closeBookingModal() {
+    document.getElementById('booking-modal').classList.remove('active');
+}
+
+async function editBookingData(id) {
+    const booking = allBookingsList.find(b => b.id === id);
+    if (!booking) {
+        showToast('ไม่พบข้อมูลการจองคิวนี้', true);
+        return;
+    }
+
+    document.getElementById('booking-id-field').value = booking.id;
+    document.getElementById('book-customer-name').value = booking.customer_name || '';
+    document.getElementById('book-customer-phone').value = booking.customer_phone || '';
+    document.getElementById('book-customer-line').value = booking.customer_line_id || '';
+    document.getElementById('book-event-type').value = booking.event_type || 'wedding';
+    
+    // Format event date (YYYY-MM-DD)
+    if (booking.event_date) {
+        document.getElementById('book-event-date').value = booking.event_date.substring(0, 10);
+    } else {
+        document.getElementById('book-event-date').value = '';
+    }
+    
+    document.getElementById('book-status').value = booking.status || 'pending';
+    document.getElementById('book-package-name').value = booking.package_name || '';
+    document.getElementById('book-total-price').value = booking.total_price || 0;
+    document.getElementById('book-details').value = booking.details || '';
+
+    document.getElementById('booking-modal-title').textContent = `แก้ไขข้อมูลการจองคิว: ${booking.id}`;
+    document.getElementById('booking-modal').classList.add('active');
+}
+
+async function saveBookingData(e) {
+    e.preventDefault();
+    const id = document.getElementById('booking-id-field').value;
+    
+    const payload = {
+        customer_name: document.getElementById('book-customer-name').value,
+        customer_phone: document.getElementById('book-customer-phone').value,
+        customer_line_id: document.getElementById('book-customer-line').value,
+        event_type: document.getElementById('book-event-type').value,
+        event_date: document.getElementById('book-event-date').value,
+        status: document.getElementById('book-status').value,
+        package_name: document.getElementById('book-package-name').value,
+        total_price: Number(document.getElementById('book-total-price').value),
+        details: document.getElementById('book-details').value
+    };
+
+    if (isOfflineMode) {
+        const index = allBookingsList.findIndex(b => b.id === id);
+        if (index !== -1) {
+            allBookingsList[index] = { ...allBookingsList[index], ...payload };
+            showToast('บันทึกการแก้ไขข้อมูลสำเร็จ (โหมดจำลองออฟไลน์)');
+        } else {
+            showToast('ไม่พบข้อมูลการจองคิว', true);
+        }
+        closeBookingModal();
+        loadBookings();
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/bookings/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${appToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('บันทึกการแก้ไขข้อมูลสำเร็จ');
+            closeBookingModal();
+            loadBookings();
+        } else {
+            const err = await res.json();
+            showToast(err.message || 'ไม่สามารถแก้ไขข้อมูลได้', true);
+        }
+    } catch (error) {
+        console.error('Save booking error:', error);
+        // Fallback to offline editing
+        const index = allBookingsList.findIndex(b => b.id === id);
+        if (index !== -1) {
+            allBookingsList[index] = { ...allBookingsList[index], ...payload };
+            showToast('บันทึกการแก้ไขข้อมูลสำเร็จ (โหมดจำลองออฟไลน์)');
+        }
+        closeBookingModal();
         loadBookings();
     }
 }
@@ -1385,6 +1496,12 @@ function playNotificationSound() {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
+        // ตรวจสอบนโยบาย Autoplay ของเบราว์เซอร์ หากยังไม่มีการโต้ตอบจากผู้ใช้ ให้ยกเลิกการเล่นเสียงเพื่อป้องกันแจ้งเตือนสีแดงในคอนโซล
+        if (audioCtx.state === 'suspended') {
+            audioCtx.close();
+            return;
+        }
+        
         // โน้ตตัวแรก (E5)
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
@@ -1419,3 +1536,46 @@ function playNotificationSound() {
 
 // Expose handleNotificationClick to global window object
 window.handleNotificationClick = handleNotificationClick;
+
+// -------------------------------------------------------------
+// ฟังก์ชันจัดการโหมดมืด/สว่าง (Theme Switcher Utilities)
+// -------------------------------------------------------------
+function initTheme() {
+    const savedTheme = localStorage.getItem('shutterpixs_theme');
+    const toggleBtn = document.getElementById('btn-theme-toggle');
+    
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+    } else {
+        // ค่าเริ่มต้นตามการตั้งค่าของระบบปฏิบัติการ (OS Theme preference)
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const currentTheme = systemPrefersDark ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+    }
+
+    // ตรวจจับการเปลี่ยนแปลงธีมของระบบในแบบเรียลไทม์
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('shutterpixs_theme')) {
+            const newTheme = e.matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+    });
+}
+
+function updateThemeIcon(theme) {
+    const toggleBtn = document.getElementById('btn-theme-toggle');
+    if (!toggleBtn) return;
+    const icon = toggleBtn.querySelector('i');
+    if (!icon) return;
+    
+    if (theme === 'dark') {
+        icon.className = 'fa-solid fa-sun';
+        toggleBtn.title = 'สลับโหมดเป็นสว่าง (Switch to Light Mode)';
+    } else {
+        icon.className = 'fa-solid fa-moon';
+        toggleBtn.title = 'สลับโหมดเป็นมืด (Switch to Dark Mode)';
+    }
+}
